@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>装修记录助手</title>
+<style>
+  :root{
+    --bg:#f7f5f2;
+    --card:#ffffff;
+    --accent:#c97b5a;
+    --accent-dark:#a85f42;
+    --text:#33302c;
+    --muted:#8a847b;
+    --border:#e8e3dc;
+    --green:#5a8a6b;
+    --red:#c25450;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding-bottom:70px;
+  }
+  header{
+    padding:18px 16px 14px;
+    background:linear-gradient(135deg,#e8dcc8,#f7f5f2);
+    border-bottom:1px solid var(--border);
+  }
+  header h1{margin:0;font-size:20px;font-weight:700;}
+  header p{margin:4px 0 0;font-size:12.5px;color:var(--muted);}
+
+  .tabs{
+    display:flex;
+    position:fixed;
+    bottom:0;left:0;right:0;
+    background:var(--card);
+    border-top:1px solid var(--border);
+    z-index:50;
+  }
+  .tab{
+    flex:1;
+    text-align:center;
+    padding:9px 0 8px;
+    font-size:11px;
+    color:var(--muted);
+    cursor:pointer;
+    user-select:none;
+  }
+  .tab .icon{font-size:19px;display:block;margin-bottom:2px;}
+  .tab.active{color:var(--accent-dark);font-weight:600;}
+
+  .page{display:none;padding:14px 14px 10px;}
+  .page.active{display:block;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px;
+    margin-bottom:12px;
+  }
+  .card h2{margin:0 0 10px;font-size:15px;}
+  .stat-row{display:flex;gap:10px;}
+  .stat{
+    flex:1;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:12px;
+    text-align:center;
+  }
+  .stat .num{font-size:18px;font-weight:700;color:var(--accent-dark);}
+  .stat .label{font-size:11px;color:var(--muted);margin-top:2px;}
+
+  .progressbar-bg{
+    background:#eee2d3;
+    border-radius:8px;
+    height:10px;
+    overflow:hidden;
+    margin-top:6px;
+  }
+  .progressbar-fill{
+    background:var(--accent);
+    height:100%;
+    border-radius:8px;
+    transition:width .3s;
+  }
+
+  button{
+    border:none;
+    border-radius:10px;
+    padding:9px 14px;
+    font-size:13.5px;
+    background:var(--accent);
+    color:#fff;
+    cursor:pointer;
+  }
+  button.secondary{background:#eee2d3;color:var(--accent-dark);}
+  button.danger{background:#fbe4e2;color:var(--red);}
+  button.full{width:100%;}
+
+  input,select,textarea{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:14px;
+    background:#fcfbf9;
+    color:var(--text);
+    margin-top:4px;
+  }
+  label{font-size:12.5px;color:var(--muted);display:block;margin-top:8px;}
+  .row2{display:flex;gap:8px;}
+  .row2>div{flex:1;}
+
+  .task-item, .expense-item, .photo-item, .note-item{
+    border-bottom:1px solid var(--border);
+    padding:10px 0;
+  }
+  .task-item:last-child,.expense-item:last-child,.note-item:last-child{border-bottom:none;}
+  .task-top{display:flex;align-items:center;gap:8px;}
+  .task-top input[type=checkbox]{width:auto;margin:0;}
+  .task-title{flex:1;font-size:14.5px;}
+  .task-title.done{text-decoration:line-through;color:var(--muted);}
+  .task-meta{font-size:11.5px;color:var(--muted);margin-left:26px;margin-top:2px;}
+  .badge{
+    display:inline-block;
+    font-size:10.5px;
+    padding:1px 7px;
+    border-radius:8px;
+    background:#eee2d3;
+    color:var(--accent-dark);
+    margin-right:4px;
+  }
+  .del-btn{
+    background:none;color:var(--red);font-size:12px;padding:2px 6px;
+  }
+  .expense-row{display:flex;justify-content:space-between;align-items:flex-start;}
+  .expense-amt{font-weight:700;color:var(--accent-dark);font-size:15px;}
+  .expense-cat{font-size:11.5px;color:var(--muted);}
+
+  .photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .photo-grid img{width:100%;height:90px;object-fit:cover;border-radius:8px;}
+  .photo-cap{font-size:10.5px;color:var(--muted);text-align:center;margin-top:2px;word-break:break-all;}
+
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:24px 0;}
+
+  .fab{
+    position:fixed;
+    right:18px;
+    bottom:78px;
+    width:50px;height:50px;
+    border-radius:50%;
+    background:var(--accent);
+    color:#fff;
+    font-size:26px;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 10px rgba(0,0,0,.15);
+    cursor:pointer;
+    z-index:40;
+  }
+
+  .modal-bg{
+    display:none;
+    position:fixed;inset:0;
+    background:rgba(0,0,0,.4);
+    z-index:100;
+    align-items:flex-end;
+  }
+  .modal-bg.show{display:flex;}
+  .modal{
+    background:var(--card);
+    width:100%;
+    border-radius:18px 18px 0 0;
+    padding:18px 16px 24px;
+    max-height:85vh;
+    overflow-y:auto;
+  }
+  .modal h3{margin:0 0 10px;font-size:16px;}
+  .modal-actions{display:flex;gap:8px;margin-top:14px;}
+
+  .filter-bar{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;}
+  .filter-chip{
+    flex:none;
+    padding:5px 11px;
+    border-radius:14px;
+    background:#eee2d3;
+    color:var(--accent-dark);
+    font-size:12px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .filter-chip.active{background:var(--accent);color:#fff;}
+  .loading{text-align:center;color:var(--muted);padding:30px 0;font-size:13px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏠 新家装修记录</h1>
+  <p id="headerSub">加载中...</p>
+</header>
+
+<!-- 概览 -->
+<div class="page active" id="page-home">
+  <div class="stat-row" style="margin-bottom:12px;">
+    <div class="stat"><div class="num" id="statTasks">0/0</div><div class="label">任务完成</div></div>
+    <div class="stat"><div class="num" id="statSpent">S$0</div><div class="label">已花费</div></div>
+    <div class="stat"><div class="num" id="statBudgetLeft">S$0</div><div class="label">预算剩余</div></div>
+  </div>
+
+  <div class="card">
+    <h2>总预算</h2>
+    <div class="row2">
+      <div>
+        <label>预算金额 (S$)</label>
+        <input type="number" id="budgetInput" placeholder="例如 200000">
+      </div>
+      <div style="display:flex;align-items:flex-end;">
+        <button onclick="saveBudget()" style="margin-top:4px;">保存</button>
+      </div>
+    </div>
+    <div class="progressbar-bg"><div class="progressbar-fill" id="budgetFill" style="width:0%"></div></div>
+    <div style="font-size:11.5px;color:var(--muted);margin-top:4px;" id="budgetText"></div>
+  </div>
+
+  <div class="card">
+    <h2>📌 进度概览</h2>
+    <div id="homeProgressList"></div>
+  </div>
+
+  <div class="card">
+    <h2>💰 最近花费</h2>
+    <div id="homeExpenseList"></div>
+  </div>
+</div>
+
+<!-- 进度/待办 -->
+<div class="page" id="page-tasks">
+  <div class="filter-bar" id="taskFilterBar"></div>
+  <div class="card" id="taskListCard">
+    <div class="loading">加载中...</div>
+  </div>
+</div>
+
+<!-- 比价/购物清单 -->
+<div class="page" id="page-shopping">
+  <div class="filter-bar">
+    <div class="filter-chip" id="subtabGoods" onclick="switchShopSubtab('goods')">🛒 家具电器比价</div>
+    <div class="filter-chip" id="subtabId" onclick="switchShopSubtab('id')">👷 设计师/ID报价</div>
+  </div>
+
+  <div id="shopGoodsSection">
+    <div class="card">
+      <h2>🛒 新增比价项目</h2>
+      <label>物品名称</label>
+      <input type="text" id="shopItemName" placeholder="例如：客厅沙发 / 冰箱">
+      <label>分类</label>
+      <select id="shopItemCategory">
+        <option>家具</option><option>电器</option><option>灯具</option>
+        <option>窗帘/软装</option><option>厨卫用品</option><option>其他</option>
+      </select>
+      <button class="full" style="margin-top:10px;" onclick="addShopItem()">创建比价项目</button>
+    </div>
+    <div class="card" id="shopListCard">
+      <div class="loading">加载中...</div>
+    </div>
+  </div>
+
+  <div id="shopIdSection" style="display:none;">
+    <div class="card">
+      <h2>👷 新增设计师/装修公司报价</h2>
+      <label>公司 / 设计师名称</label>
+      <input type="text" id="idCompanyName" placeholder="例如：某某装饰 / 张设计师">
+      <label>联系方式</label>
+      <input type="text" id="idContact" placeholder="电话/微信(选填)">
+      <label>报价总额</label>
+      <input type="number" id="idTotalPrice" placeholder="0">
+      <label>备注</label>
+      <textarea id="idNotes" rows="2" placeholder="工期、用材、印象、优缺点等"></textarea>
+      <button class="full" style="margin-top:10px;" onclick="addIdQuote()">保存这家报价</button>
+    </div>
+    <div class="card" id="idListCard">
+      <div class="loading">加载中...</div>
+    </div>
+  </div>
+</div>
+
+<!-- 花费 -->
+<div class="page" id="page-expense">
+  <div class="card">
+    <div class="stat-row">
+      <div class="stat"><div class="num" id="expTotal">S$0</div><div class="label">总花费</div></div>
+      <div class="stat"><div class="num" id="expCount">0</div><div class="label">笔数</div></div>
+    </div>
+  </div>
+  <div class="card" id="expenseListCard">
+    <div class="loading">加载中...</div>
+  </div>
+</div>
+
+<!-- 照片 -->
+<div class="page" id="page-photos">
+  <div class="card">
+    <h2>📷 添加照片记录</h2>
+    <label>选择照片</label>
+    <input type="file" id="photoFile" accept="image/*" onchange="previewPhoto()">
+    <img id="photoPreview" style="display:none;width:100%;max-height:200px;object-fit:contain;margin-top:8px;border-radius:8px;">
+    <label>备注 (如：客厅吊顶完成)</label>
+    <input type="text" id="photoNote" placeholder="备注说明">
+    <label>分类</label>
+    <select id="photoRoom">
+      <option>客厅</option><option>卧室</option><option>厨房</option><option>卫生间</option>
+      <option>阳台</option><option>玄关</option><option>其他</option>
+    </select>
+    <button class="full" style="margin-top:10px;" onclick="addPhoto()">保存照片</button>
+  </div>
+  <div class="card">
+    <h2>照片记录</h2>
+    <div class="photo-grid" id="photoGrid"></div>
+    <div class="empty" id="photoEmpty" style="display:none;">还没有照片，拍下装修进展吧 📸</div>
+  </div>
+</div>
+
+<!-- 笔记/联系人 -->
+<div class="page" id="page-notes">
+  <div class="card">
+    <h2>📝 新增笔记 / 联系人</h2>
+    <label>标题</label>
+    <input type="text" id="noteTitle" placeholder="例如：水电师傅-王哥 或 选材记录">
+    <label>内容</label>
+    <textarea id="noteContent" rows="3" placeholder="电话、地址、注意事项、想法..."></textarea>
+    <button class="full" style="margin-top:10px;" onclick="addNote()">保存</button>
+  </div>
+  <div class="card" id="noteListCard">
+    <h2>所有笔记</h2>
+    <div id="noteList"></div>
+    <div class="empty" id="noteEmpty" style="display:none;">还没有笔记</div>
+  </div>
+</div>
+
+<!-- 设置 -->
+<div class="page" id="page-settings">
+  <div class="card">
+    <h2>💱 货币符号</h2>
+    <label>显示在金额前面的符号</label>
+    <input type="text" id="currencyInput" placeholder="例如 S$ 、￥ 、$">
+    <button class="full" style="margin-top:10px;" onclick="saveCurrency()">保存</button>
+  </div>
+
+  <div class="card">
+    <h2>💾 数据备份</h2>
+    <p style="font-size:12.5px;color:var(--muted);margin-top:0;">所有数据自动同步到你自己的 Google Sheet 和 Google Drive（私有，只有你能看到）。换手机、用电脑打开同一个链接都能看到一样的内容。导出备份是额外的双重保险。</p>
+    <button class="full" onclick="exportData()">导出备份文件</button>
+    <label style="margin-top:14px;">导入备份文件</label>
+    <input type="file" id="importFile" accept=".json" onchange="importData()">
+  </div>
+
+  <div class="card">
+    <h2>⚠️ 清空数据</h2>
+    <p style="font-size:12.5px;color:var(--muted);margin-top:0;">将删除所有任务、花费、照片和笔记，且无法恢复。建议先导出备份。</p>
+    <button class="full danger" onclick="clearAllData()">清空全部数据</button>
+  </div>
+
+  <div class="card">
+    <h2>🛠 如何自己修改这个 App</h2>
+    <p style="font-size:12.5px;color:var(--muted);margin-top:0;line-height:1.6;">
+      这个 App 是一个单独的 HTML 文件，里面包含三部分：<br>
+      • <strong>&lt;style&gt;</strong> 标签里是外观样式（颜色、间距等）<br>
+      • <strong>&lt;body&gt;</strong> 里是页面结构和文字内容<br>
+      • <strong>&lt;script&gt;</strong> 标签里是逻辑功能（按钮点击后做什么）<br><br>
+      想改文字、颜色或加新选项，可以让我直接帮你改；如果想自己动手，用电脑上的文本编辑器（如 Notepad / TextEdit / VS Code）打开这个 .html 文件搜索关键词修改即可，改完保存、刷新页面就生效。
+    </p>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-page="home"><span class="icon">🏡</span>概览</div>
+  <div class="tab" data-page="tasks"><span class="icon">✅</span>进度</div>
+  <div class="tab" data-page="expense"><span class="icon">💰</span>花费</div>
+  <div class="tab" data-page="shopping"><span class="icon">🛒</span>比价</div>
+  <div class="tab" data-page="photos"><span class="icon">📷</span>照片</div>
+  <div class="tab" data-page="notes"><span class="icon">📝</span>笔记</div>
+  <div class="tab" data-page="settings"><span class="icon">⚙️</span>设置</div>
+</div>
+
+<div class="fab" id="fabBtn" onclick="openQuickAdd()">+</div>
+
+<!-- 快速添加任务/花费 弹窗 -->
+<div class="modal-bg" id="taskModalBg">
+  <div class="modal">
+    <h3>新增任务</h3>
+    <label>任务名称</label>
+    <input type="text" id="taskName" placeholder="例如：贴瓦工程">
+    <label>所属阶段</label>
+    <select id="taskStage">
+      <option>前期准备</option>
+      <option>拆改</option>
+      <option>水电</option>
+      <option>瓦工</option>
+      <option>木工</option>
+      <option>油漆</option>
+      <option>安装</option>
+      <option>软装/家具</option>
+      <option>验收</option>
+    </select>
+    <label>备注</label>
+    <input type="text" id="taskNote" placeholder="备注(选填)">
+    <div class="modal-actions">
+      <button class="secondary full" onclick="closeTaskModal()">取消</button>
+      <button class="full" onclick="addTask()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="expenseModalBg">
+  <div class="modal">
+    <h3>新增花费</h3>
+    <div class="row2">
+      <div>
+        <label>金额 (S$)</label>
+        <input type="number" id="expAmount" placeholder="0">
+      </div>
+      <div>
+        <label>分类</label>
+        <select id="expCategory">
+          <option>主材</option><option>辅材</option><option>人工</option>
+          <option>家具</option><option>家电</option><option>软装</option>
+          <option>设计费</option><option>其他</option>
+        </select>
+      </div>
+    </div>
+    <label>说明</label>
+    <input type="text" id="expDesc" placeholder="例如：地砖-客厅 80块">
+    <label>日期</label>
+    <input type="date" id="expDate">
+    <div class="modal-actions">
+      <button class="secondary full" onclick="closeExpenseModal()">取消</button>
+      <button class="full" onclick="addExpense()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="idPhotoModalBg">
+  <div class="modal">
+    <h3>上传报价单照片</h3>
+    <label>选择照片(可多张，逐次添加)</label>
+    <input type="file" id="idPhotoFile" accept="image/*" onchange="previewIdPhoto()">
+    <img id="idPhotoPreview" style="display:none;width:100%;max-height:220px;object-fit:contain;margin-top:8px;border-radius:8px;">
+    <label>备注(选填)</label>
+    <input type="text" id="idPhotoNote" placeholder="例如：主材清单第1页">
+    <div class="modal-actions">
+      <button class="secondary full" onclick="closeIdPhotoModal()">取消</button>
+      <button class="full" onclick="saveIdPhoto()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="optionModalBg">
+  <div class="modal">
+    <h3>添加比价选项</h3>
+    <label>品牌 / 商家</label>
+    <input type="text" id="optBrand" placeholder="例如：宜家 / 林氏木业 / 某某建材店">
+    <div class="row2">
+      <div>
+        <label>价格 (<span id="optCurrLabel"></span>)</label>
+        <input type="number" id="optPrice" placeholder="0">
+      </div>
+      <div>
+        <label>购买渠道</label>
+        <input type="text" id="optShop" placeholder="线下店/淘宝/官网...">
+      </div>
+    </div>
+    <label>备注</label>
+    <input type="text" id="optNote" placeholder="尺寸、颜色、链接等(选填)">
+    <div class="modal-actions">
+      <button class="secondary full" onclick="closeOptionModal()">取消</button>
+      <button class="full" onclick="addOption()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="quickAddBg">
+  <div class="modal">
+    <h3>添加</h3>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="full" onclick="closeQuickAdd();openTaskModal();">✅ 新增任务/进度</button>
+      <button class="full" onclick="closeQuickAdd();openExpenseModal();">💰 新增花费</button>
+      <button class="full" onclick="closeQuickAdd();switchToShoppingTab();">🛒 新增比价项目</button>
+      <button class="full" onclick="closeQuickAdd();switchToShoppingTab();switchShopSubtab('id');">👷 新增设计师/ID报价</button>
+      <button class="secondary full" onclick="closeQuickAdd()">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let tasks = [];
+let expenses = [];
+let photos = [];
+let notes = [];
+let shoppingItems = [];
+let idQuotes = [];
+let budget = 0;
+let currency = 'S$';
+let taskFilter = '全部';
+let activeShopItemId = null;
+let activeIdQuoteId = null;
+let pendingIdPhotoData = null;
+const STAGES = ['前期准备','拆改','水电','瓦工','木工','油漆','安装','软装/家具','验收'];
+
+function curr(){return currency || 'S$';}
+function fmt(n){
+  n = Number(n)||0;
+  const sign = n<0 ? '-' : '';
+  return sign + curr() + Math.abs(n).toLocaleString();
+}
+
+// ---------- SETTINGS ----------
+async function saveCurrency(){
+  const v = document.getElementById('currencyInput').value.trim();
+  currency = v || 'S$';
+  await persist('renovation:currency', currency);
+  renderAll();
+  alert('已保存');
+}
+
+function exportData(){
+  const backup = {tasks, expenses, photos, notes, shoppingItems, idQuotes, budget, currency, exportedAt: new Date().toISOString()};
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '装修记录备份_' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importData(){
+  const file = document.getElementById('importFile').files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!confirm('导入将覆盖当前所有数据，确定继续吗？')) return;
+      tasks = data.tasks || [];
+      expenses = data.expenses || [];
+      photos = data.photos || [];
+      notes = data.notes || [];
+      shoppingItems = data.shoppingItems || [];
+      idQuotes = data.idQuotes || [];
+      budget = data.budget || 0;
+      currency = data.currency || 'S$';
+      await persist('renovation:tasks', tasks);
+      await persist('renovation:expenses', expenses);
+      await persist('renovation:photos', photos);
+      await persist('renovation:notes', notes);
+      await persist('renovation:shopping', shoppingItems);
+      await persist('renovation:idquotes', idQuotes);
+      await persist('renovation:budget', String(budget));
+      await persist('renovation:currency', currency);
+      document.getElementById('budgetInput').value = budget || '';
+      document.getElementById('currencyInput').value = currency;
+      renderAll();
+      alert('导入成功！');
+    }catch(err){
+      alert('文件格式不对，导入失败');
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function clearAllData(){
+  if(!confirm('确定要清空所有数据吗？此操作无法撤销！')) return;
+  if(!confirm('再次确认：真的要删除全部任务、花费、照片和笔记吗？')) return;
+  tasks = []; expenses = []; photos = []; notes = []; shoppingItems = []; idQuotes = []; budget = 0;
+  await persist('renovation:tasks', tasks);
+  await persist('renovation:expenses', expenses);
+  await persist('renovation:photos', photos);
+  await persist('renovation:notes', notes);
+  await persist('renovation:shopping', shoppingItems);
+  await persist('renovation:idquotes', idQuotes);
+  await persist('renovation:budget', '0');
+  document.getElementById('budgetInput').value = '';
+  renderAll();
+  alert('已清空');
+}
+
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwWnSYFZqv6SqFftHj0UU1qG2ibVgjuWM8KXCjJIzdnRRryjNTumtpQgOLu9JejAKUc9g/exec';
+
+async function loadAll(){
+  document.getElementById('headerSub').textContent = '正在从云端加载数据...';
+  try{
+    const res = await fetch(GAS_URL);
+    const data = await res.json();
+    tasks = data['renovation:tasks'] ? JSON.parse(data['renovation:tasks']) : [];
+    expenses = data['renovation:expenses'] ? JSON.parse(data['renovation:expenses']) : [];
+    photos = data['renovation:photos'] ? JSON.parse(data['renovation:photos']) : [];
+    notes = data['renovation:notes'] ? JSON.parse(data['renovation:notes']) : [];
+    shoppingItems = data['renovation:shopping'] ? JSON.parse(data['renovation:shopping']) : [];
+    idQuotes = data['renovation:idquotes'] ? JSON.parse(data['renovation:idquotes']) : [];
+    budget = data['renovation:budget'] ? Number(data['renovation:budget']) : 0;
+    currency = data['renovation:currency'] || 'S$';
+  }catch(e){
+    console.error('云端加载失败', e);
+    alert('从云端加载数据失败，请检查网络连接后刷新页面重试');
+  }
+
+  document.getElementById('budgetInput').value = budget || '';
+  document.getElementById('currencyInput').value = currency;
+  document.getElementById('headerSub').textContent = '记录每一步，留住装修的全过程（已连接 Google 云端）';
+  renderAll();
+}
+
+async function persist(key, value){
+  const strValue = typeof value==='string' ? value : JSON.stringify(value);
+  try{
+    await fetch(GAS_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'save', key:key, value:strValue})
+    });
+  }catch(e){
+    console.error('保存到云端失败', e);
+    alert('保存到云端失败，请检查网络连接，数据可能没有存上');
+    throw e;
+  }
+}
+
+async function uploadPhotoToCloud(dataUrl, filename){
+  const res = await fetch(GAS_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({action:'uploadPhoto', data:dataUrl, filename:filename})
+  });
+  const json = await res.json();
+  if(!json.ok) throw new Error(json.error || '上传失败');
+  return json.url;
+}
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
+// ---------- TABS ----------
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('page-'+tab.dataset.page).classList.add('active');
+  });
+});
+
+// ---------- QUICK ADD ----------
+function openQuickAdd(){document.getElementById('quickAddBg').classList.add('show');}
+function closeQuickAdd(){document.getElementById('quickAddBg').classList.remove('show');}
+
+// ---------- TASKS ----------
+function openTaskModal(){
+  document.getElementById('taskName').value='';
+  document.getElementById('taskNote').value='';
+  document.getElementById('taskModalBg').classList.add('show');
+}
+function closeTaskModal(){document.getElementById('taskModalBg').classList.remove('show');}
+
+async function addTask(){
+  const name = document.getElementById('taskName').value.trim();
+  if(!name){alert('请输入任务名称');return;}
+  const stage = document.getElementById('taskStage').value;
+  const note = document.getElementById('taskNote').value.trim();
+  tasks.push({id:uid(), name, stage, note, done:false, createdAt:Date.now()});
+  await persist('renovation:tasks', tasks);
+  closeTaskModal();
+  renderTasks();
+  renderHome();
+}
+
+async function toggleTask(id){
+  const t = tasks.find(x=>x.id===id);
+  if(t){t.done=!t.done; await persist('renovation:tasks', tasks); renderTasks(); renderHome();}
+}
+
+async function deleteTask(id){
+  tasks = tasks.filter(x=>x.id!==id);
+  await persist('renovation:tasks', tasks);
+  renderTasks(); renderHome();
+}
+
+function renderTaskFilters(){
+  const bar = document.getElementById('taskFilterBar');
+  const opts = ['全部', ...STAGES];
+  bar.innerHTML = opts.map(s=>`<div class="filter-chip ${s===taskFilter?'active':''}" onclick="setTaskFilter('${s}')">${s}</div>`).join('');
+}
+function setTaskFilter(s){taskFilter=s; renderTasks();}
+
+function renderTasks(){
+  renderTaskFilters();
+  const card = document.getElementById('taskListCard');
+  let list = tasks.slice().sort((a,b)=>a.done-b.done || b.createdAt-a.createdAt);
+  if(taskFilter!=='全部') list = list.filter(t=>t.stage===taskFilter);
+  if(list.length===0){
+    card.innerHTML = '<div class="empty">还没有任务，点击右下角 + 添加一个吧</div>';
+    return;
+  }
+  card.innerHTML = list.map(t=>`
+    <div class="task-item">
+      <div class="task-top">
+        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}')">
+        <div class="task-title ${t.done?'done':''}">${escapeHtml(t.name)}</div>
+        <button class="del-btn" onclick="deleteTask('${t.id}')">删除</button>
+      </div>
+      <div class="task-meta"><span class="badge">${t.stage}</span>${t.note?escapeHtml(t.note):''}</div>
+    </div>
+  `).join('');
+}
+
+// ---------- EXPENSES ----------
+function openExpenseModal(){
+  document.getElementById('expAmount').value='';
+  document.getElementById('expDesc').value='';
+  document.getElementById('expDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('expenseModalBg').classList.add('show');
+}
+function closeExpenseModal(){document.getElementById('expenseModalBg').classList.remove('show');}
+
+async function addExpense(){
+  const amount = parseFloat(document.getElementById('expAmount').value);
+  if(!amount || amount<=0){alert('请输入有效金额');return;}
+  const category = document.getElementById('expCategory').value;
+  const desc = document.getElementById('expDesc').value.trim();
+  const date = document.getElementById('expDate').value || new Date().toISOString().slice(0,10);
+  expenses.push({id:uid(), amount, category, desc, date, createdAt:Date.now()});
+  await persist('renovation:expenses', expenses);
+  closeExpenseModal();
+  renderExpenses(); renderHome();
+}
+
+async function deleteExpense(id){
+  expenses = expenses.filter(x=>x.id!==id);
+  await persist('renovation:expenses', expenses);
+  renderExpenses(); renderHome();
+}
+
+function renderExpenses(){
+  const card = document.getElementById('expenseListCard');
+  const list = expenses.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  const total = expenses.reduce((s,e)=>s+e.amount,0);
+  document.getElementById('expTotal').textContent = fmt(total);
+  document.getElementById('expCount').textContent = expenses.length;
+  if(list.length===0){
+    card.innerHTML = '<div class="empty">还没有花费记录</div>';
+    return;
+  }
+  card.innerHTML = '<h2>花费明细</h2>' + list.map(e=>`
+    <div class="expense-item">
+      <div class="expense-row">
+        <div>
+          <div>${escapeHtml(e.desc||e.category)}</div>
+          <div class="expense-cat">${e.category} · ${e.date}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="expense-amt">${fmt(e.amount)}</div>
+          <button class="del-btn" onclick="deleteExpense('${e.id}')">删除</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ---------- BUDGET ----------
+async function saveBudget(){
+  const v = parseFloat(document.getElementById('budgetInput').value) || 0;
+  budget = v;
+  await persist('renovation:budget', String(v));
+  renderHome();
+}
+
+// ---------- PHOTOS ----------
+let pendingPhotoData = null;
+function previewPhoto(){
+  const file = document.getElementById('photoFile').files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    pendingPhotoData = e.target.result;
+    const img = document.getElementById('photoPreview');
+    img.src = pendingPhotoData;
+    img.style.display='block';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function addPhoto(){
+  if(!pendingPhotoData){alert('请先选择照片');return;}
+  const note = document.getElementById('photoNote').value.trim();
+  const room = document.getElementById('photoRoom').value;
+  const saveBtn = document.querySelector('#page-photos button.full');
+  if(saveBtn){saveBtn.textContent='上传中...'; saveBtn.disabled=true;}
+  try{
+    const url = await uploadPhotoToCloud(pendingPhotoData, uid());
+    const photo = {id:uid(), url, note, room, createdAt:Date.now()};
+    photos.push(photo);
+    await persist('renovation:photos', photos);
+  }catch(e){
+    console.error(e);
+    alert('照片上传失败，请检查网络后重试');
+    if(saveBtn){saveBtn.textContent='保存照片'; saveBtn.disabled=false;}
+    return;
+  }
+  if(saveBtn){saveBtn.textContent='保存照片'; saveBtn.disabled=false;}
+  pendingPhotoData = null;
+  document.getElementById('photoFile').value='';
+  document.getElementById('photoNote').value='';
+  document.getElementById('photoPreview').style.display='none';
+  renderPhotos();
+}
+
+async function deletePhoto(id){
+  photos = photos.filter(p=>p.id!==id);
+  await persist('renovation:photos', photos);
+  renderPhotos();
+}
+
+function renderPhotos(){
+  const grid = document.getElementById('photoGrid');
+  const empty = document.getElementById('photoEmpty');
+  if(photos.length===0){
+    grid.innerHTML=''; empty.style.display='block'; return;
+  }
+  empty.style.display='none';
+  const list = photos.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  grid.innerHTML = list.map(p=>`
+    <div onclick="deletePhotoConfirm('${p.id}')">
+      <img src="${p.url||p.data}">
+      <div class="photo-cap">${p.room}${p.note?' · '+escapeHtml(p.note):''}</div>
+    </div>
+  `).join('');
+}
+function deletePhotoConfirm(id){
+  if(confirm('删除这张照片？')) deletePhoto(id);
+}
+
+// ---------- SHOPPING / PRICE COMPARE ----------
+function switchToShoppingTab(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.tab[data-page="shopping"]').classList.add('active');
+  document.getElementById('page-shopping').classList.add('active');
+}
+
+async function addShopItem(){
+  const name = document.getElementById('shopItemName').value.trim();
+  if(!name){alert('请输入物品名称');return;}
+  const category = document.getElementById('shopItemCategory').value;
+  shoppingItems.push({id:uid(), name, category, options:[], chosenOptionId:null, purchased:false, createdAt:Date.now()});
+  await persist('renovation:shopping', shoppingItems);
+  document.getElementById('shopItemName').value='';
+  renderShopping();
+}
+
+async function deleteShopItem(id){
+  if(!confirm('删除这个比价项目？')) return;
+  shoppingItems = shoppingItems.filter(s=>s.id!==id);
+  await persist('renovation:shopping', shoppingItems);
+  renderShopping();
+}
+
+function openOptionModal(itemId){
+  activeShopItemId = itemId;
+  document.getElementById('optBrand').value='';
+  document.getElementById('optPrice').value='';
+  document.getElementById('optShop').value='';
+  document.getElementById('optNote').value='';
+  document.getElementById('optCurrLabel').textContent = curr();
+  document.getElementById('optionModalBg').classList.add('show');
+}
+function closeOptionModal(){document.getElementById('optionModalBg').classList.remove('show');}
+
+async function addOption(){
+  const brand = document.getElementById('optBrand').value.trim();
+  const price = parseFloat(document.getElementById('optPrice').value);
+  if(!brand){alert('请输入品牌/商家');return;}
+  if(!price || price<=0){alert('请输入有效价格');return;}
+  const shop = document.getElementById('optShop').value.trim();
+  const note = document.getElementById('optNote').value.trim();
+  const item = shoppingItems.find(s=>s.id===activeShopItemId);
+  if(!item) return;
+  item.options.push({id:uid(), brand, price, shop, note});
+  await persist('renovation:shopping', shoppingItems);
+  closeOptionModal();
+  renderShopping();
+}
+
+async function deleteOption(itemId, optId){
+  const item = shoppingItems.find(s=>s.id===itemId);
+  if(!item) return;
+  item.options = item.options.filter(o=>o.id!==optId);
+  if(item.chosenOptionId===optId) item.chosenOptionId=null;
+  await persist('renovation:shopping', shoppingItems);
+  renderShopping();
+}
+
+async function chooseOption(itemId, optId){
+  const item = shoppingItems.find(s=>s.id===itemId);
+  if(!item) return;
+  item.chosenOptionId = (item.chosenOptionId===optId) ? null : optId;
+  await persist('renovation:shopping', shoppingItems);
+  renderShopping();
+}
+
+async function markPurchased(itemId){
+  const item = shoppingItems.find(s=>s.id===itemId);
+  if(!item) return;
+  const chosen = item.options.find(o=>o.id===item.chosenOptionId);
+  if(!chosen){alert('请先选定一个比价选项');return;}
+  if(!confirm(`将以 ${fmt(chosen.price)} (${chosen.brand}) 记入花费，确定吗？`)) return;
+  expenses.push({
+    id:uid(),
+    amount: chosen.price,
+    category: item.category==='电器' ? '家电' : (item.category==='家具' ? '家具' : '其他'),
+    desc: `${item.name} - ${chosen.brand}`,
+    date: new Date().toISOString().slice(0,10),
+    createdAt: Date.now()
+  });
+  item.purchased = true;
+  await persist('renovation:expenses', expenses);
+  await persist('renovation:shopping', shoppingItems);
+  renderShopping(); renderExpenses(); renderHome();
+  alert('已加入花费记录！');
+}
+
+function renderShopping(){
+  const card = document.getElementById('shopListCard');
+  if(shoppingItems.length===0){
+    card.innerHTML = '<div class="empty">还没有比价项目，先在上面创建一个，比如"客厅沙发"</div>';
+    return;
+  }
+  const list = shoppingItems.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  card.innerHTML = '<h2>比价清单</h2>' + list.map(item=>{
+    const minPrice = item.options.length ? Math.min(...item.options.map(o=>o.price)) : null;
+    const optsHtml = item.options.length===0
+      ? '<div style="font-size:12.5px;color:var(--muted);padding:6px 0;">还没有添加选项</div>'
+      : item.options.slice().sort((a,b)=>a.price-b.price).map(o=>{
+          const isChosen = item.chosenOptionId===o.id;
+          const isCheapest = o.price===minPrice;
+          return `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-top:1px solid var(--border);">
+            <div style="flex:1;">
+              <div style="font-size:13.5px;">
+                ${escapeHtml(o.brand)}
+                ${isCheapest?'<span class="badge" style="background:#dcefe0;color:var(--green);">最低价</span>':''}
+                ${isChosen?'<span class="badge">已选定</span>':''}
+              </div>
+              <div style="font-size:11px;color:var(--muted);">${o.shop?escapeHtml(o.shop)+' · ':''}${o.note?escapeHtml(o.note):''}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-weight:700;color:var(--accent-dark);">${fmt(o.price)}</div>
+              <div style="margin-top:3px;">
+                <button class="secondary" style="padding:3px 8px;font-size:11px;" onclick="chooseOption('${item.id}','${o.id}')">${isChosen?'取消选定':'选定'}</button>
+                <button class="del-btn" onclick="deleteOption('${item.id}','${o.id}')">删除</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+    return `
+      <div style="margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <strong style="font-size:14.5px;">${escapeHtml(item.name)}</strong>
+            <span class="badge">${item.category}</span>
+            ${item.purchased?'<span class="badge" style="background:#dcefe0;color:var(--green);">已购买</span>':''}
+          </div>
+          <button class="del-btn" onclick="deleteShopItem('${item.id}')">删除</button>
+        </div>
+        ${optsHtml}
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="secondary" style="flex:1;" onclick="openOptionModal('${item.id}')">+ 添加选项</button>
+          ${!item.purchased?`<button style="flex:1;" onclick="markPurchased('${item.id}')">已购买，记入花费</button>`:''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ---------- SHOPPING SUB-TABS ----------
+function switchShopSubtab(which){
+  const goodsBtn = document.getElementById('subtabGoods');
+  const idBtn = document.getElementById('subtabId');
+  const goodsSec = document.getElementById('shopGoodsSection');
+  const idSec = document.getElementById('shopIdSection');
+  if(which==='id'){
+    idBtn.classList.add('active'); goodsBtn.classList.remove('active');
+    idSec.style.display='block'; goodsSec.style.display='none';
+  }else{
+    goodsBtn.classList.add('active'); idBtn.classList.remove('active');
+    goodsSec.style.display='block'; idSec.style.display='none';
+  }
+}
+switchShopSubtab('goods');
+
+// ---------- ID QUOTES (设计师/装修公司报价比较) ----------
+async function addIdQuote(){
+  const company = document.getElementById('idCompanyName').value.trim();
+  if(!company){alert('请输入公司/设计师名称');return;}
+  const contact = document.getElementById('idContact').value.trim();
+  const totalPrice = parseFloat(document.getElementById('idTotalPrice').value) || 0;
+  const notes = document.getElementById('idNotes').value.trim();
+  idQuotes.push({id:uid(), company, contact, totalPrice, notes, photos:[], chosen:false, createdAt:Date.now()});
+  persist('renovation:idquotes', idQuotes);
+  document.getElementById('idCompanyName').value='';
+  document.getElementById('idContact').value='';
+  document.getElementById('idTotalPrice').value='';
+  document.getElementById('idNotes').value='';
+  renderIdQuotes();
+}
+
+async function deleteIdQuote(id){
+  if(!confirm('删除这家报价记录？')) return;
+  idQuotes = idQuotes.filter(q=>q.id!==id);
+  persist('renovation:idquotes', idQuotes);
+  renderIdQuotes();
+}
+
+async function chooseIdQuote(id){
+  idQuotes.forEach(q=>{ if(q.id===id) q.chosen=!q.chosen; });
+  persist('renovation:idquotes', idQuotes);
+  renderIdQuotes();
+}
+
+function openIdPhotoModal(quoteId){
+  activeIdQuoteId = quoteId;
+  pendingIdPhotoData = null;
+  document.getElementById('idPhotoFile').value='';
+  document.getElementById('idPhotoNote').value='';
+  document.getElementById('idPhotoPreview').style.display='none';
+  document.getElementById('idPhotoModalBg').classList.add('show');
+}
+function closeIdPhotoModal(){document.getElementById('idPhotoModalBg').classList.remove('show');}
+
+function previewIdPhoto(){
+  const file = document.getElementById('idPhotoFile').files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    pendingIdPhotoData = e.target.result;
+    const img = document.getElementById('idPhotoPreview');
+    img.src = pendingIdPhotoData;
+    img.style.display='block';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveIdPhoto(){
+  if(!pendingIdPhotoData){alert('请先选择照片');return;}
+  const quote = idQuotes.find(q=>q.id===activeIdQuoteId);
+  if(!quote) return;
+  const note = document.getElementById('idPhotoNote').value.trim();
+  const saveBtn = document.querySelector('#idPhotoModalBg .modal-actions button.full');
+  if(saveBtn){saveBtn.textContent='上传中...'; saveBtn.disabled=true;}
+  try{
+    const url = await uploadPhotoToCloud(pendingIdPhotoData, uid());
+    quote.photos.push({id:uid(), url, note});
+    await persist('renovation:idquotes', idQuotes);
+  }catch(e){
+    console.error(e);
+    alert('照片上传失败，请检查网络后重试');
+    if(saveBtn){saveBtn.textContent='保存'; saveBtn.disabled=false;}
+    return;
+  }
+  closeIdPhotoModal();
+  renderIdQuotes();
+}
+
+async function deleteIdPhoto(quoteId, photoId){
+  const quote = idQuotes.find(q=>q.id===quoteId);
+  if(!quote) return;
+  quote.photos = quote.photos.filter(p=>p.id!==photoId);
+  persist('renovation:idquotes', idQuotes);
+  renderIdQuotes();
+}
+
+function renderIdQuotes(){
+  const card = document.getElementById('idListCard');
+  if(idQuotes.length===0){
+    card.innerHTML = '<div class="empty">还没有报价记录，先在上面添加一家</div>';
+    return;
+  }
+  const list = idQuotes.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  const prices = idQuotes.filter(q=>q.totalPrice>0).map(q=>q.totalPrice);
+  const minPrice = prices.length ? Math.min(...prices) : null;
+
+  card.innerHTML = '<h2>报价对比</h2>' + list.map(q=>{
+    const isCheapest = q.totalPrice>0 && q.totalPrice===minPrice;
+    const photosHtml = q.photos.length===0
+      ? '<div style="font-size:12px;color:var(--muted);padding:4px 0;">还没有上传报价单照片</div>'
+      : `<div class="photo-grid" style="margin-top:6px;">${q.photos.map(p=>`
+          <div onclick="if(confirm('删除这张照片？')) deleteIdPhoto('${q.id}','${p.id}')">
+            <img src="${p.url||p.data}">
+            ${p.note?`<div class="photo-cap">${escapeHtml(p.note)}</div>`:''}
+          </div>
+        `).join('')}</div>`;
+    return `
+      <div style="margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <strong style="font-size:14.5px;">${escapeHtml(q.company)}</strong>
+            ${isCheapest?'<span class="badge" style="background:#dcefe0;color:var(--green);">最低价</span>':''}
+            ${q.chosen?'<span class="badge">已选定</span>':''}
+            <div style="font-size:11.5px;color:var(--muted);">${q.contact?escapeHtml(q.contact):''}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700;color:var(--accent-dark);">${q.totalPrice>0?fmt(q.totalPrice):'未填报价'}</div>
+            <button class="del-btn" onclick="deleteIdQuote('${q.id}')">删除</button>
+          </div>
+        </div>
+        ${q.notes?`<div style="font-size:12.5px;color:var(--muted);margin-top:4px;white-space:pre-wrap;">${escapeHtml(q.notes)}</div>`:''}
+        ${photosHtml}
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="secondary" style="flex:1;" onclick="openIdPhotoModal('${q.id}')">📷 添加报价单照片</button>
+          <button class="${q.chosen?'secondary':''}" style="flex:1;" onclick="chooseIdQuote('${q.id}')">${q.chosen?'取消选定':'选定这家'}</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ---------- NOTES ----------
+async function addNote(){
+  const title = document.getElementById('noteTitle').value.trim();
+  const content = document.getElementById('noteContent').value.trim();
+  if(!title){alert('请输入标题');return;}
+  notes.push({id:uid(), title, content, createdAt:Date.now()});
+  await persist('renovation:notes', notes);
+  document.getElementById('noteTitle').value='';
+  document.getElementById('noteContent').value='';
+  renderNotes();
+}
+async function deleteNote(id){
+  notes = notes.filter(n=>n.id!==id);
+  await persist('renovation:notes', notes);
+  renderNotes();
+}
+function renderNotes(){
+  const list = notes.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  const empty = document.getElementById('noteEmpty');
+  const container = document.getElementById('noteList');
+  if(list.length===0){container.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  container.innerHTML = list.map(n=>`
+    <div class="note-item">
+      <div style="display:flex;justify-content:space-between;">
+        <strong>${escapeHtml(n.title)}</strong>
+        <button class="del-btn" onclick="deleteNote('${n.id}')">删除</button>
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-top:3px;white-space:pre-wrap;">${escapeHtml(n.content)}</div>
+    </div>
+  `).join('');
+}
+
+// ---------- HOME ----------
+function renderHome(){
+  const done = tasks.filter(t=>t.done).length;
+  document.getElementById('statTasks').textContent = `${done}/${tasks.length}`;
+  const totalSpent = expenses.reduce((s,e)=>s+e.amount,0);
+  document.getElementById('statSpent').textContent = fmt(totalSpent);
+  const left = budget - totalSpent;
+  document.getElementById('statBudgetLeft').textContent = fmt(left);
+
+  const pct = budget>0 ? Math.min(100, (totalSpent/budget*100)) : 0;
+  document.getElementById('budgetFill').style.width = pct+'%';
+  document.getElementById('budgetFill').style.background = pct>=100?'var(--red)':'var(--accent)';
+  document.getElementById('budgetText').textContent = budget>0
+    ? `已用 ${fmt(totalSpent)} / 预算 ${fmt(budget)} (${pct.toFixed(1)}%)`
+    : '尚未设置预算';
+
+  // progress by stage
+  const stageList = document.getElementById('homeProgressList');
+  const stageStats = STAGES.map(s=>{
+    const items = tasks.filter(t=>t.stage===s);
+    const doneCount = items.filter(t=>t.done).length;
+    return {stage:s, total:items.length, done:doneCount};
+  }).filter(s=>s.total>0);
+  if(stageStats.length===0){
+    stageList.innerHTML = '<div class="empty">还没有添加任务</div>';
+  }else{
+    stageList.innerHTML = stageStats.map(s=>{
+      const pct = s.total? (s.done/s.total*100):0;
+      return `<div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;">
+          <span>${s.stage}</span><span style="color:var(--muted);">${s.done}/${s.total}</span>
+        </div>
+        <div class="progressbar-bg"><div class="progressbar-fill" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // recent expenses
+  const recentList = document.getElementById('homeExpenseList');
+  const recent = expenses.slice().sort((a,b)=>b.createdAt-a.createdAt).slice(0,4);
+  if(recent.length===0){
+    recentList.innerHTML = '<div class="empty">还没有花费记录</div>';
+  }else{
+    recentList.innerHTML = recent.map(e=>`
+      <div class="expense-item">
+        <div class="expense-row">
+          <div>
+            <div>${escapeHtml(e.desc||e.category)}</div>
+            <div class="expense-cat">${e.category} · ${e.date}</div>
+          </div>
+          <div class="expense-amt">${fmt(e.amount)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function escapeHtml(s){
+  if(!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderAll(){
+  renderHome();
+  renderTasks();
+  renderExpenses();
+  renderPhotos();
+  renderNotes();
+  renderShopping();
+  renderIdQuotes();
+}
+
+loadAll();
+</script>
+</body>
+</html>
