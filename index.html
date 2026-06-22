@@ -1214,16 +1214,17 @@ function renderIdQuotes(){
           </div>
           <div style="text-align:right;">
             <div style="font-weight:700;color:var(--accent-dark);">${q.totalPrice>0?fmt(q.totalPrice):'未填报价'}</div>
+            <button class="del-btn" onclick="editIdQuote('${q.id}')" style="color:var(--accent-dark);">编辑</button>
             <button class="del-btn" onclick="deleteIdQuote('${q.id}')">删除</button>
           </div>
         </div>
         ${meetingHtml}
         ${q.notes?`<div style="font-size:12.5px;color:var(--muted);margin-top:4px;white-space:pre-wrap;">${escapeHtml(q.notes)}</div>`:''}
         ${photosHtml}
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button class="secondary" style="flex:1;" onclick="openIdPhotoModal('${q.id}')">📷 添加报价单照片</button>
-          <button class="secondary" style="flex:1;" onclick="updateIdNextMeeting('${q.id}')">⏰ 设置下次见面</button>
-          <button class="${q.chosen?'secondary':''}" style="flex:1;" onclick="chooseIdQuote('${q.id}')">${q.chosen?'取消选定':'选定这家'}</button>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <button class="secondary" style="flex:1;min-width:100px;" onclick="openIdPhotoModal('${q.id}')">📷 添加报价单照片</button>
+          <button class="secondary" style="flex:1;min-width:100px;" onclick="updateIdNextMeeting('${q.id}')">⏰ 设置下次见面</button>
+          <button class="${q.chosen?'secondary':''}" style="flex:1;min-width:100px;" onclick="chooseIdQuote('${q.id}')">${q.chosen?'取消选定':'选定这家'}</button>
         </div>
       </div>`;
   }).join('');
