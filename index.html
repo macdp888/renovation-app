@@ -233,6 +233,11 @@
   </div>
 
   <div class="card">
+    <h2>⏰ 近期约访</h2>
+    <div id="homeMeetingList"></div>
+  </div>
+
+  <div class="card">
     <h2>💰 最近花费</h2>
     <div id="homeExpenseList"></div>
   </div>
@@ -279,6 +284,16 @@
       <input type="text" id="idContact" placeholder="电话/微信(选填)">
       <label>报价总额</label>
       <input type="number" id="idTotalPrice" placeholder="0">
+      <div class="row2">
+        <div>
+          <label>最近见面日期</label>
+          <input type="date" id="idMeetingDate">
+        </div>
+        <div>
+          <label>下次见面时间</label>
+          <input type="datetime-local" id="idNextMeeting">
+        </div>
+      </div>
       <label>备注</label>
       <textarea id="idNotes" rows="2" placeholder="工期、用材、印象、优缺点等"></textarea>
       <button class="full" style="margin-top:10px;" onclick="addIdQuote()">保存这家报价</button>
@@ -1007,14 +1022,30 @@ async function addIdQuote(){
   if(!company){alert('请输入公司/设计师名称');return;}
   const contact = document.getElementById('idContact').value.trim();
   const totalPrice = parseFloat(document.getElementById('idTotalPrice').value) || 0;
+  const meetingDate = document.getElementById('idMeetingDate').value;
+  const nextMeeting = document.getElementById('idNextMeeting').value;
   const notes = document.getElementById('idNotes').value.trim();
-  idQuotes.push({id:uid(), company, contact, totalPrice, notes, photos:[], chosen:false, createdAt:Date.now()});
+  idQuotes.push({id:uid(), company, contact, totalPrice, meetingDate, nextMeeting, notes, photos:[], chosen:false, createdAt:Date.now()});
   persist('renovation:idquotes', idQuotes);
   document.getElementById('idCompanyName').value='';
   document.getElementById('idContact').value='';
   document.getElementById('idTotalPrice').value='';
+  document.getElementById('idMeetingDate').value='';
+  document.getElementById('idNextMeeting').value='';
   document.getElementById('idNotes').value='';
   renderIdQuotes();
+}
+
+async function updateIdNextMeeting(id){
+  const quote = idQuotes.find(q=>q.id===id);
+  if(!quote) return;
+  const current = quote.nextMeeting ? quote.nextMeeting.slice(0,16) : '';
+  const input = prompt('设置下次见面时间 (格式: 2026-06-25T14:00)', current);
+  if(input===null) return;
+  quote.nextMeeting = input.trim();
+  persist('renovation:idquotes', idQuotes);
+  renderIdQuotes();
+  renderHome();
 }
 
 async function deleteIdQuote(id){
@@ -1082,13 +1113,26 @@ async function deleteIdPhoto(quoteId, photoId){
   renderIdQuotes();
 }
 
+function formatMeetingTime(dt){
+  if(!dt) return '';
+  const d = new Date(dt);
+  if(isNaN(d.getTime())) return dt;
+  const pad = n=>String(n).padStart(2,'0');
+  return `${d.getMonth()+1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function renderIdQuotes(){
   const card = document.getElementById('idListCard');
   if(idQuotes.length===0){
     card.innerHTML = '<div class="empty">还没有报价记录，先在上面添加一家</div>';
     return;
   }
-  const list = idQuotes.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  const list = idQuotes.slice().sort((a,b)=>{
+    const an = a.nextMeeting ? new Date(a.nextMeeting).getTime() : Infinity;
+    const bn = b.nextMeeting ? new Date(b.nextMeeting).getTime() : Infinity;
+    if(an!==bn) return an-bn;
+    return b.createdAt-a.createdAt;
+  });
   const prices = idQuotes.filter(q=>q.totalPrice>0).map(q=>q.totalPrice);
   const minPrice = prices.length ? Math.min(...prices) : null;
 
@@ -1102,6 +1146,11 @@ function renderIdQuotes(){
             ${p.note?`<div class="photo-cap">${escapeHtml(p.note)}</div>`:''}
           </div>
         `).join('')}</div>`;
+    const meetingHtml = (q.meetingDate || q.nextMeeting) ? `
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+        ${q.meetingDate?`📅 最近见面：${q.meetingDate}`:''}
+        ${q.nextMeeting?`<br>⏰ 下次见面：<strong style="color:var(--accent-dark);">${formatMeetingTime(q.nextMeeting)}</strong>`:''}
+      </div>` : '';
     return `
       <div style="margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -1116,10 +1165,12 @@ function renderIdQuotes(){
             <button class="del-btn" onclick="deleteIdQuote('${q.id}')">删除</button>
           </div>
         </div>
+        ${meetingHtml}
         ${q.notes?`<div style="font-size:12.5px;color:var(--muted);margin-top:4px;white-space:pre-wrap;">${escapeHtml(q.notes)}</div>`:''}
         ${photosHtml}
         <div style="display:flex;gap:8px;margin-top:8px;">
           <button class="secondary" style="flex:1;" onclick="openIdPhotoModal('${q.id}')">📷 添加报价单照片</button>
+          <button class="secondary" style="flex:1;" onclick="updateIdNextMeeting('${q.id}')">⏰ 设置下次见面</button>
           <button class="${q.chosen?'secondary':''}" style="flex:1;" onclick="chooseIdQuote('${q.id}')">${q.chosen?'取消选定':'选定这家'}</button>
         </div>
       </div>`;
@@ -1210,6 +1261,27 @@ function renderHome(){
             <div class="expense-cat">${e.category} · ${e.date}</div>
           </div>
           <div class="expense-amt">${fmt(e.amount)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // upcoming ID meetings
+  const meetingList = document.getElementById('homeMeetingList');
+  const upcoming = (idQuotes||[])
+    .filter(q=>q.nextMeeting)
+    .map(q=>({company:q.company, time:new Date(q.nextMeeting).getTime(), raw:q.nextMeeting}))
+    .filter(m=>!isNaN(m.time))
+    .sort((a,b)=>a.time-b.time)
+    .slice(0,5);
+  if(upcoming.length===0){
+    meetingList.innerHTML = '<div class="empty">暂无安排，去"比价"页设置设计师的下次见面时间</div>';
+  }else{
+    meetingList.innerHTML = upcoming.map(m=>`
+      <div class="task-item">
+        <div style="display:flex;justify-content:space-between;">
+          <div>${escapeHtml(m.company)}</div>
+          <div style="font-weight:600;color:var(--accent-dark);">${formatMeetingTime(m.raw)}</div>
         </div>
       </div>
     `).join('');
