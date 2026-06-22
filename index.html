@@ -277,7 +277,7 @@
 
   <div id="shopIdSection" style="display:none;">
     <div class="card">
-      <h2>👷 新增设计师/装修公司报价</h2>
+      <h2 id="idFormTitle">👷 新增设计师/装修公司报价</h2>
       <label>公司 / 设计师名称</label>
       <input type="text" id="idCompanyName" placeholder="例如：某某装饰 / 张设计师">
       <label>联系方式</label>
@@ -296,7 +296,10 @@
       </div>
       <label>备注</label>
       <textarea id="idNotes" rows="2" placeholder="工期、用材、印象、优缺点等"></textarea>
-      <button class="full" style="margin-top:10px;" onclick="addIdQuote()">保存这家报价</button>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="full" id="idSubmitBtn" onclick="addIdQuote()">保存这家报价</button>
+        <button class="secondary" id="idCancelEditBtn" style="display:none;" onclick="cancelIdEdit()">取消编辑</button>
+      </div>
     </div>
     <div class="card" id="idListCard">
       <div class="loading">加载中...</div>
@@ -884,13 +887,19 @@ async function deleteShopItem(id){
   renderShopping();
 }
 
-function openOptionModal(itemId){
+let activeOptionId = null;
+
+function openOptionModal(itemId, optId){
   activeShopItemId = itemId;
-  document.getElementById('optBrand').value='';
-  document.getElementById('optPrice').value='';
-  document.getElementById('optShop').value='';
-  document.getElementById('optNote').value='';
+  activeOptionId = optId || null;
+  const item = shoppingItems.find(s=>s.id===itemId);
+  const opt = (optId && item) ? item.options.find(o=>o.id===optId) : null;
+  document.getElementById('optBrand').value = opt ? opt.brand : '';
+  document.getElementById('optPrice').value = opt ? opt.price : '';
+  document.getElementById('optShop').value = opt ? (opt.shop||'') : '';
+  document.getElementById('optNote').value = opt ? (opt.note||'') : '';
   document.getElementById('optCurrLabel').textContent = curr();
+  document.querySelector('#optionModalBg h3').textContent = opt ? '编辑比价选项' : '添加比价选项';
   document.getElementById('optionModalBg').classList.add('show');
 }
 function closeOptionModal(){document.getElementById('optionModalBg').classList.remove('show');}
@@ -904,7 +913,12 @@ async function addOption(){
   const note = document.getElementById('optNote').value.trim();
   const item = shoppingItems.find(s=>s.id===activeShopItemId);
   if(!item) return;
-  item.options.push({id:uid(), brand, price, shop, note});
+  if(activeOptionId){
+    const opt = item.options.find(o=>o.id===activeOptionId);
+    if(opt){ opt.brand=brand; opt.price=price; opt.shop=shop; opt.note=note; }
+  }else{
+    item.options.push({id:uid(), brand, price, shop, note});
+  }
   await persist('renovation:shopping', shoppingItems);
   closeOptionModal();
   renderShopping();
@@ -975,6 +989,7 @@ function renderShopping(){
             <div style="text-align:right;">
               <div style="font-weight:700;color:var(--accent-dark);">${fmt(o.price)}</div>
               <div style="margin-top:3px;">
+                <button class="secondary" style="padding:3px 8px;font-size:11px;" onclick="openOptionModal('${item.id}','${o.id}')">编辑</button>
                 <button class="secondary" style="padding:3px 8px;font-size:11px;" onclick="chooseOption('${item.id}','${o.id}')">${isChosen?'取消选定':'选定'}</button>
                 <button class="del-btn" onclick="deleteOption('${item.id}','${o.id}')">删除</button>
               </div>
@@ -1025,15 +1040,51 @@ async function addIdQuote(){
   const meetingDate = document.getElementById('idMeetingDate').value;
   const nextMeeting = document.getElementById('idNextMeeting').value;
   const notes = document.getElementById('idNotes').value.trim();
-  idQuotes.push({id:uid(), company, contact, totalPrice, meetingDate, nextMeeting, notes, photos:[], chosen:false, createdAt:Date.now()});
+
+  if(editingIdQuoteId){
+    const quote = idQuotes.find(q=>q.id===editingIdQuoteId);
+    if(quote){
+      quote.company=company; quote.contact=contact; quote.totalPrice=totalPrice;
+      quote.meetingDate=meetingDate; quote.nextMeeting=nextMeeting; quote.notes=notes;
+    }
+  }else{
+    idQuotes.push({id:uid(), company, contact, totalPrice, meetingDate, nextMeeting, notes, photos:[], chosen:false, createdAt:Date.now()});
+  }
   persist('renovation:idquotes', idQuotes);
+  cancelIdEdit();
+  renderIdQuotes();
+  renderHome();
+}
+
+function editIdQuote(id){
+  const quote = idQuotes.find(q=>q.id===id);
+  if(!quote) return;
+  editingIdQuoteId = id;
+  document.getElementById('idCompanyName').value = quote.company || '';
+  document.getElementById('idContact').value = quote.contact || '';
+  document.getElementById('idTotalPrice').value = quote.totalPrice || '';
+  document.getElementById('idMeetingDate').value = quote.meetingDate || '';
+  document.getElementById('idNextMeeting').value = quote.nextMeeting || '';
+  document.getElementById('idNotes').value = quote.notes || '';
+  document.getElementById('idFormTitle').textContent = '✏️ 编辑这家报价';
+  document.getElementById('idSubmitBtn').textContent = '保存修改';
+  document.getElementById('idCancelEditBtn').style.display = 'block';
+  switchToShoppingTab();
+  switchShopSubtab('id');
+  document.getElementById('idCompanyName').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function cancelIdEdit(){
+  editingIdQuoteId = null;
   document.getElementById('idCompanyName').value='';
   document.getElementById('idContact').value='';
   document.getElementById('idTotalPrice').value='';
   document.getElementById('idMeetingDate').value='';
   document.getElementById('idNextMeeting').value='';
   document.getElementById('idNotes').value='';
-  renderIdQuotes();
+  document.getElementById('idFormTitle').textContent = '👷 新增设计师/装修公司报价';
+  document.getElementById('idSubmitBtn').textContent = '保存这家报价';
+  document.getElementById('idCancelEditBtn').style.display = 'none';
 }
 
 async function updateIdNextMeeting(id){
