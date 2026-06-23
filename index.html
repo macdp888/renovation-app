@@ -274,8 +274,8 @@
     <div style="font-size:11.5px;color:var(--muted);margin-top:4px;" id="budgetText"></div>
   </div>
 
-  <div class="card">
-    <h2>📌 进度概览</h2>
+  <div class="card" onclick="switchToTasksTab()" style="cursor:pointer;">
+    <h2>📌 进度概览 <span style="font-size:11.5px;color:var(--muted);font-weight:400;">查看全部 →</span></h2>
     <div id="homeProgressList"></div>
   </div>
 
@@ -292,6 +292,9 @@
 
 <!-- 进度/待办 -->
 <div class="page" id="page-tasks">
+  <div style="margin-bottom:10px;">
+    <button class="secondary" style="padding:6px 12px;font-size:12.5px;" onclick="switchToHomeTab()">← 返回概览</button>
+  </div>
   <div class="filter-bar" id="taskFilterBar"></div>
   <div class="card" id="taskListCard">
     <div class="loading">加载中...</div>
@@ -444,9 +447,8 @@
 
 <div class="tabs">
   <div class="tab active" data-page="home"><span class="icon">🏡</span>概览</div>
-  <div class="tab" data-page="tasks"><span class="icon">✅</span>进度</div>
   <div class="tab" data-page="expense"><span class="icon">💰</span>花费</div>
-  <div class="tab" data-page="shopping"><span class="icon">🛒</span>比价</div>
+  <div class="tab" data-page="shopping"><span class="icon">🛒</span>选购</div>
   <div class="tab" data-page="photos"><span class="icon">📷</span>照片</div>
   <div class="tab" data-page="notes"><span class="icon">📝</span>笔记</div>
   <div class="tab" data-page="settings"><span class="icon">⚙️</span>设置</div>
@@ -544,6 +546,17 @@
     <div class="modal-actions">
       <button class="secondary full" onclick="closeOptionModal()">取消</button>
       <button class="full" onclick="addOption()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="lightboxBg" onclick="if(event.target.id==='lightboxBg') closeLightbox()">
+  <div class="modal" style="text-align:center;">
+    <img id="lightboxImg" style="width:100%;max-height:60vh;object-fit:contain;border-radius:10px;">
+    <div id="lightboxCaption" style="font-size:12.5px;color:var(--muted);margin-top:8px;"></div>
+    <div class="modal-actions">
+      <button class="secondary full" onclick="closeLightbox()">关闭</button>
+      <button class="danger full" id="lightboxDeleteBtn">删除照片</button>
     </div>
   </div>
 </div>
@@ -900,14 +913,27 @@ function renderPhotos(){
   empty.style.display='none';
   const list = photos.slice().sort((a,b)=>b.createdAt-a.createdAt);
   grid.innerHTML = list.map(p=>`
-    <div onclick="deletePhotoConfirm('${p.id}')">
+    <div onclick="openLightbox('${p.url||p.data}','${escapeHtml(p.room+(p.note?(' · '+p.note):''))}', () => deletePhoto('${p.id}'))">
       <img src="${p.url||p.data}">
       <div class="photo-cap">${p.room}${p.note?' · '+escapeHtml(p.note):''}</div>
     </div>
   `).join('');
 }
-function deletePhotoConfirm(id){
-  if(confirm('删除这张照片？')) deletePhoto(id);
+
+function openLightbox(url, caption, onDelete){
+  document.getElementById('lightboxImg').src = url;
+  document.getElementById('lightboxCaption').textContent = caption || '';
+  const delBtn = document.getElementById('lightboxDeleteBtn');
+  delBtn.onclick = function(){
+    if(confirm('删除这张照片？')){
+      onDelete();
+      closeLightbox();
+    }
+  };
+  document.getElementById('lightboxBg').classList.add('show');
+}
+function closeLightbox(){
+  document.getElementById('lightboxBg').classList.remove('show');
 }
 
 // ---------- SHOPPING / PRICE COMPARE ----------
@@ -916,6 +942,19 @@ function switchToShoppingTab(){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelector('.tab[data-page="shopping"]').classList.add('active');
   document.getElementById('page-shopping').classList.add('active');
+}
+
+function switchToTasksTab(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-tasks').classList.add('active');
+}
+
+function switchToHomeTab(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.tab[data-page="home"]').classList.add('active');
+  document.getElementById('page-home').classList.add('active');
 }
 
 async function addShopItem(){
@@ -1240,7 +1279,7 @@ function renderIdQuotes(){
     const photosHtml = q.photos.length===0
       ? '<div style="font-size:12px;color:var(--muted);padding:4px 0;">还没有上传报价单照片</div>'
       : `<div class="photo-grid" style="margin-top:6px;">${q.photos.map(p=>`
-          <div onclick="if(confirm('删除这张照片？')) deleteIdPhoto('${q.id}','${p.id}')">
+          <div onclick="openLightbox('${p.url||p.data}','${escapeHtml(p.note||'')}', () => deleteIdPhoto('${q.id}','${p.id}'))">
             <img src="${p.url||p.data}">
             ${p.note?`<div class="photo-cap">${escapeHtml(p.note)}</div>`:''}
           </div>
